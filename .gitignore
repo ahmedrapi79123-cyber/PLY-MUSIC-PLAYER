@@ -21,3 +21,10 @@ logs/
 .vscode/
 
 .DS_Store
+data/history.json
+data/settings.json
+data/temp/
+
+*.save
+*.bak
+*~
