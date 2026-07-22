@@ -1,0 +1,4 @@
+pygame>=2.5.0
+mutagen>=1.46.0
+rich>=13.0.0
+pillow>=10.0.0
