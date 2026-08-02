@@ -22,21 +22,26 @@ Version: 1.0.0
 Section: sound
 Priority: optional
 Architecture: all
-Depends: python3, python3-tk, python3-gi, python3-mutagen, python3-rich, python3-pil, python3-pil.imagetk
-Maintainer: PLY Developer <developer@ply.org>
-Description: A professional, modern command-line and graphical music player.
+Depends: python3, python3-tk, python3-gi, python3-gst-1.0, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-ugly, python3-mutagen, python3-rich, python3-pil, python3-pil.imagetk, python3-dbus
+Maintainer: Ahmed <developer@ply.org>
+Description: PLY - A modern command-line and graphical music player.
+ PLY is a lightweight music player powered by GStreamer with a Tkinter GUI,
+ Rich terminal TUI, MPRIS2 desktop integration, and system tray support.
 EOF
 
 # 4. Create Desktop shortcut launcher
-cat << 'EOF' > ply_deb_build/usr/share/applications/ply.desktop
+cat << 'EOF' > ply_deb_build/usr/share/applications/io.github.ahmed.ply.desktop
 [Desktop Entry]
 Name=PLY Music Player
-Comment=A modern CLI and GUI music player
-Exec=/usr/bin/ply --gui
-Icon=music
+Comment=Simple and lightweight music player
+Exec=/usr/bin/ply --gui %U
+Icon=io.github.ahmed.ply
 Terminal=false
 Type=Application
-Categories=AudioVideo;Audio;Player;
+Categories=AudioVideo;Audio;Player;Music;
+Keywords=Music;Audio;Player;MP3;OGG;WAV;
+StartupNotify=true
+MimeType=audio/mpeg;audio/ogg;audio/x-wav;audio/flac;audio/opus;
 EOF
 
 # 5. Create launcher execution script
@@ -69,7 +74,7 @@ chmod 755 ply_deb_build/usr/bin/ply
 chmod -R 755 ply_deb_build/usr/share/ply
 chmod 755 ply_deb_build/DEBIAN
 chmod 644 ply_deb_build/DEBIAN/control
-chmod 644 ply_deb_build/usr/share/applications/ply.desktop
+chmod 644 ply_deb_build/usr/share/applications/io.github.ahmed.ply.desktop
 chmod 644 ply_deb_build/usr/share/pixmaps/music.png
 
 # 8. Compile the Debian package

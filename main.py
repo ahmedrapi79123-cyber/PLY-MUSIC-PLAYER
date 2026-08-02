@@ -52,7 +52,7 @@ def main() -> None:
     if args.shuffle:
         settings.set("shuffle", True)
     if args.repeat:
-        settings.set("repeat", True)
+        settings.set("repeat", "all")
     if args.volume is not None:
         # Clamp volume between 0 and 100
         vol = max(0, min(args.volume, 100))
@@ -66,9 +66,13 @@ def main() -> None:
     # Handle path argument if provided
     input_path = None
     if args.path:
-        input_path = Path(args.path).resolve()
+        import urllib.parse
+        p_str = args.path
+        if p_str.startswith("file://"):
+            p_str = urllib.parse.unquote(p_str[7:])
+        input_path = Path(p_str).resolve()
         if not input_path.exists():
-            print(f"Error: Path '{args.path}' does not exist.")
+            print(f"Error: Path '{p_str}' does not exist.")
             sys.exit(1)
 
         # Update last folder settings
@@ -107,7 +111,10 @@ def main() -> None:
                     on_next      = lambda: app.root.after(0, app._next_song),
                     on_previous  = lambda: app.root.after(0, app._prev_song),
                     on_seek      = lambda pos: app.root.after(0, lambda: player.seek(pos)),
+                    on_open_uri  = lambda path: app.root.after(0, lambda: app._open_uri(path)),
                     on_raise_window = lambda: app.root.after(0, app.show_window),
+                    get_loop_status = lambda: playlist.repeat_mode,
+                    get_shuffle     = lambda: playlist.shuffle,
                 )
                 if started:
                     app.mpris = mpris

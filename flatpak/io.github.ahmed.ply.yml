@@ -1,0 +1,143 @@
+app-id: io.github.ahmed.ply
+runtime: org.freedesktop.Platform
+runtime-version: '23.08'
+sdk: org.freedesktop.Sdk
+command: ply
+
+finish-args:
+  # Display (X11 + Wayland)
+  - --share=ipc
+  - --socket=x11
+  - --socket=wayland
+  # Audio playback
+  - --socket=pulseaudio
+  # MPRIS2 D-Bus ownership
+  - --own-name=org.mpris.MediaPlayer2.ply
+  # File access: user music directory only
+  - --filesystem=xdg-music:ro
+  # Allow file chooser portal to grant access to other files
+  - --talk-name=org.freedesktop.portal.FileChooser
+  # D-Bus session bus for MPRIS notifications
+  - --talk-name=org.freedesktop.DBus
+
+modules:
+  # Tcl/Tk for Tkinter GUI support
+  - name: tcl
+    buildsystem: autotools
+    subdir: unix
+    post-install:
+      - chmod 755 /app/lib/libtcl*.so
+    cleanup:
+      - /bin
+      - /lib/pkgconfig
+      - /man
+    sources:
+      - type: archive
+        url: https://prdownloads.sourceforge.net/tcl/tcl8.6.13-src.tar.gz
+        sha256: 43a1fae7412f61ff11de2cfd05d28cfc3a73762f354a417c62370a54e2caf066
+
+  - name: tk
+    buildsystem: autotools
+    subdir: unix
+    post-install:
+      - chmod 755 /app/lib/libtk*.so
+    cleanup:
+      - /bin
+      - /lib/pkgconfig
+      - /man
+    sources:
+      - type: archive
+        url: https://prdownloads.sourceforge.net/tcl/tk8.6.13-src.tar.gz
+        sha256: 2e65fa069a23365440a3c56c556b8673b5e32a283800d8d9b257e3f584ce0675
+
+  # Build Python from source so Tkinter (_tkinter) module compiles against the Tcl/Tk above
+  - name: python3
+    buildsystem: autotools
+    config-opts:
+      - --enable-shared
+      - --with-ensurepip=upgrade
+    post-install:
+      - chmod +x /app/bin/python3
+    cleanup:
+      - /lib/pkgconfig
+      - /share/man
+    sources:
+      - type: archive
+        url: https://www.python.org/ftp/python/3.11.9/Python-3.11.9.tar.xz
+        sha256: 9b1e896523fc510691126c864406d9360a3d1e986acbda59cda57b5abda45b87
+
+  # Python dependencies (pip packages)
+  - name: python3-mutagen
+    buildsystem: simple
+    build-commands:
+      - pip3 install --no-build-isolation --no-deps --prefix=/app mutagen-1.47.0.tar.gz
+    sources:
+      - type: file
+        url: https://files.pythonhosted.org/packages/81/e6/64bc71b74eef4b68e61eb921dcf72dabd9e4ec4af1e11891bbd312ccbb77/mutagen-1.47.0.tar.gz
+        sha256: 719fadef0a978c31b4cf3c956261b3c58b6948b32023078a2117b1de09f0fc99
+  
+  - name: python3-markdown-it-py
+    buildsystem: simple
+    build-commands:
+      - pip3 install --no-build-isolation --prefix=/app markdown_it_py-4.2.0.tar.gz
+    sources:
+      - type: file
+        url: https://files.pythonhosted.org/packages/06/ff/7841249c247aa650a76b9ee4bbaeae59370dc8bfd2f6c01f3630c35eb134/markdown_it_py-4.2.0.tar.gz
+        sha256: 04a21681d6fbb623de53f6f364d352309d4094dd4194040a10fd51833e418d49
+
+  - name: python3-mdurl
+    buildsystem: simple
+    build-commands:
+      - pip3 install --no-build-isolation --prefix=/app mdurl-0.1.2.tar.gz
+    sources:
+      - type: file
+        url: https://files.pythonhosted.org/packages/d6/54/cfe61301667036ec958cb99bd3efefba235e65cdeb9c84d24a8293ba1d90/mdurl-0.1.2.tar.gz
+        sha256: bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba
+
+  - name: python3-Pygments
+    buildsystem: simple
+    build-commands:
+      - pip3 install --no-build-isolation --prefix=/app pygments-2.20.0.tar.gz
+    sources:
+      - type: file
+        url: https://files.pythonhosted.org/packages/c3/b2/bc9c9196916376152d655522fdcebac55e66de6603a76a02bca1b6414f6c/pygments-2.20.0.tar.gz
+        sha256: 6757cd03768053ff99f3039c1a36d6c0aa0b263438fcab17520b30a303a82b5f
+
+  - name: python3-rich
+    buildsystem: simple
+    build-commands:
+      - pip3 install --no-build-isolation --prefix=/app rich-15.0.0.tar.gz
+    sources:
+      - type: file
+        url: https://files.pythonhosted.org/packages/c0/8f/0722ca900cc807c13a6a0c696dacf35430f72e0ec571c4275d2371fca3e9/rich-15.0.0.tar.gz
+        sha256: edd07a4824c6b40189fb7ac9bc4c52536e9780fbbfbddf6f1e2502c31b068c36
+
+  - name: python3-pillow
+    buildsystem: simple
+    build-commands:
+      - pip3 install --no-build-isolation --no-deps --prefix=/app .
+    sources:
+      - type: file
+        url: https://files.pythonhosted.org/packages/cd/74/ad3d526f3bf7b6d3f408b73fde271ec69dfac8b81341a318ce825f2b3812/pillow-10.4.0.tar.gz
+        sha256: 166c1cd4d24309b30d61f79f4a9114b7b2313d7450912277855ff5dfd7cd4a06
+ 
+  # PLY application
+  - name: ply
+    buildsystem: simple
+    build-commands:
+      # Install Python modules
+      - pip3 install --no-build-isolation --prefix=/app .
+      # Install desktop entry
+      - install -Dm644 flatpak/io.github.ahmed.ply.desktop /app/share/applications/io.github.ahmed.ply.desktop
+      # Install AppStream metadata
+      - install -Dm644 flatpak/io.github.ahmed.ply.metainfo.xml /app/share/metainfo/io.github.ahmed.ply.metainfo.xml
+      # Install application icon (512x512)
+      - install -Dm644 music.png /app/share/icons/hicolor/512x512/apps/io.github.ahmed.ply.png
+      # Install smaller icon sizes from assets
+      - install -Dm644 assets/music.png /app/share/icons/hicolor/128x128/apps/io.github.ahmed.ply.png
+      # Install assets directory for the application
+      - mkdir -p /app/share/ply/assets
+      - cp -r assets/* /app/share/ply/assets/
+    sources:
+      - type: dir
+        path: ..

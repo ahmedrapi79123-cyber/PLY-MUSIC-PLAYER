@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=PLY
+Comment=Simple and lightweight music player
+Exec=ply --gui %U
+Icon=io.github.ahmed.ply
+Terminal=false
+Type=Application
+Categories=AudioVideo;Audio;Player;Music;
+Keywords=Music;Audio;Player;MP3;OGG;WAV;
+StartupNotify=true
+MimeType=audio/mpeg;audio/ogg;audio/x-wav;audio/flac;audio/opus;

@@ -46,7 +46,7 @@ class GUI:
         self.root = tk.Tk()
         self.root.title("PLY Music Player")
         self.root.geometry("1000x650")
-        self.root.minimum_size = (800, 550)
+        self.root.minsize(800, 550)
 
         # Image caching to prevent garbage collection
         self.images: Dict[str, ImageTk.PhotoImage] = {}
@@ -628,9 +628,10 @@ class GUI:
     # =====================================================================
     def _open_file(self) -> None:
         """Opens a file dialog to load and play a single audio file."""
+        ext_str = " ".join(f"*{e}" for e in sorted(SUPPORTED_EXTENSIONS))
         file_path = filedialog.askopenfilename(
             title="Open Audio File",
-            filetypes=[("Audio Files", "*.mp3 *.wav *.ogg")]
+            filetypes=[("Audio Files", ext_str), ("All Files", "*")]
         )
         if file_path:
             song_path = Path(file_path)
@@ -749,6 +750,25 @@ class GUI:
             self.playlist.save_m3u(Path(file_path))
             messagebox.showinfo("PLY Music", "Playlist saved successfully.")
 
+    def _open_uri(self, path) -> None:
+        """Opens and plays a file from a URI (called by MPRIS OpenUri)."""
+        from pathlib import Path as _Path
+        from library import Song as _Song
+        try:
+            song_path = _Path(path).resolve()
+            if not song_path.exists() or not song_path.is_file():
+                logger.warning("MPRIS OpenUri: file not found: %s", song_path)
+                return
+            song = _Song(song_path)
+            self.playlist.clear()
+            self.playlist.add_song(song)
+            self._render_treeview()
+            self._play_song(song)
+            self.settings.set("last_folder", str(song_path.parent))
+            logger.info("Opened via MPRIS OpenUri: %s", song_path)
+        except Exception as e:
+            logger.error("Failed to open URI '%s': %s", path, e)
+
     # =====================================================================
     # TOGGLE PLAYBACK MODES
     # =====================================================================
@@ -829,7 +849,11 @@ class GUI:
 
         # Set repeat and shuffle modes in controls
         self.playlist.shuffle = self.settings.get("shuffle")
-        self.playlist.repeat_mode = "all" if self.settings.get("repeat") else "off"
+        # repeat is stored as string: "off", "all", or "single"
+        saved_repeat = self.settings.get("repeat")
+        if isinstance(saved_repeat, bool):
+            saved_repeat = "all" if saved_repeat else "off"
+        self.playlist.repeat_mode = saved_repeat if saved_repeat in ("off", "all", "single") else "off"
 
         # Apply settings
         theme = self.theme_mgr.get_gui_theme()
@@ -934,7 +958,8 @@ class GUI:
 
         self.settings.set("last_volume", self.player.volume)
         self.settings.set("shuffle", self.playlist.shuffle)
-        self.settings.set("repeat", self.playlist.repeat_mode != "off")
+        # Save repeat_mode as string ("off", "all", "single")
+        self.settings.set("repeat", self.playlist.repeat_mode)
 
         current = self.playlist.current_song
         if current:

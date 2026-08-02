@@ -9,14 +9,24 @@ setup(
     name="ply-player",
     version="1.0.0",
     description="A professional, modern command-line and graphical music player.",
-    author="PLY Developers",
-    py_modules=["main", "cli", "gui", "player", "playlist", "library", "settings", "config", "themes", "icons", "utils"],
+    author="Ahmed",
+    author_email="developer@ply.org",
+    url="https://github.com/ahmedrapi79123-cyber/PLY-MUSIC-PLAYER",
+    license="MIT",
+    py_modules=[
+        "main", "cli", "gui", "player", "playlist",
+        "library", "settings", "config", "themes", "icons", "utils", "mpris",
+    ],
     install_requires=[
-        "pygame>=2.5.0",
         "mutagen>=1.46.0",
         "rich>=13.0.0",
-        "pillow>=10.0.0"
+        "pillow>=10.0.0",
+        # pystray is optional (system tray support) — gracefully skipped if absent.
+        # Install it with: pip install pystray>=0.19.5
     ],
+    extras_require={
+        "tray": ["pystray>=0.19.5"],
+    },
     entry_points={
         "console_scripts": [
             "ply=main:main",
@@ -25,8 +35,11 @@ setup(
     python_requires=">=3.10",
     classifiers=[
         "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
-        "Operating System :: OS Independent",
+        "Programming Language :: Python :: 3.12",
+        "Operating System :: POSIX :: Linux",
         "Topic :: Multimedia :: Sound/Audio :: Players",
+        "License :: OSI Approved :: MIT License",
     ],
 )

@@ -36,6 +36,9 @@ class Player:
         self._bus_thread: Optional[threading.Thread] = None
         self._stop_bus = threading.Event()
 
+        self._play_lock = threading.Lock()
+        self.playback_token = 0
+
         if not GST_AVAILABLE:
             logger.error("GStreamer (python3-gi) is not available. Cannot initialize player.")
             return
@@ -67,81 +70,89 @@ class Player:
             logger.warning("Player not initialized. Cannot play: %s", song)
             return False
 
-        try:
-            # Stop any current playback
-            self._playbin.set_state(Gst.State.NULL)
+        with self._play_lock:
+            self.playback_token += 1
+            current_token = self.playback_token
 
-            # Set URI
-            filepath = Path(song.filepath).resolve()
-            uri = filepath.as_uri()
-            self._playbin.set_property('uri', uri)
-
-            # Start playback
-            ret = self._playbin.set_state(Gst.State.PLAYING)
-            if ret == Gst.StateChangeReturn.FAILURE:
-                logger.error("GStreamer failed to set PLAYING state for: %s", song.filepath)
-                self.state = "stopped"
-                return False
-
-            # Wait briefly for state transition
-            state_ret, _cur, _pend = self._playbin.get_state(timeout=Gst.SECOND * 3)
-            if state_ret == Gst.StateChangeReturn.FAILURE:
-                logger.error("GStreamer state transition failed for: %s", song.filepath)
+            try:
+                # Stop any current playback
                 self._playbin.set_state(Gst.State.NULL)
+
+                # Set URI
+                filepath = Path(song.filepath).resolve()
+                uri = filepath.as_uri()
+                self._playbin.set_property('uri', uri)
+
+                # Start playback
+                ret = self._playbin.set_state(Gst.State.PLAYING)
+                if ret == Gst.StateChangeReturn.FAILURE:
+                    logger.error("GStreamer failed to set PLAYING state for: %s", song.filepath)
+                    self.state = "stopped"
+                    return False
+
+                # Wait briefly for state transition
+                state_ret, _cur, _pend = self._playbin.get_state(timeout=Gst.SECOND * 3)
+                if state_ret == Gst.StateChangeReturn.FAILURE:
+                    logger.error("GStreamer state transition failed for: %s", song.filepath)
+                    self._playbin.set_state(Gst.State.NULL)
+                    self.state = "stopped"
+                    return False
+
+                # Seek to start_pos if needed
+                if start_pos > 0.0:
+                    self._playbin.seek_simple(
+                        Gst.Format.TIME,
+                        Gst.SeekFlags.FLUSH | Gst.SeekFlags.KEY_UNIT,
+                        int(start_pos * Gst.SECOND)
+                    )
+
+                self.current_song = song
+                self.state = "playing"
+                logger.info("GStreamer playing: %s (from %.1fs)", song, start_pos)
+                return True
+
+            except Exception as e:
+                logger.error("GStreamer play error for %s: %s", song.filepath, e)
                 self.state = "stopped"
                 return False
-
-            # Seek to start_pos if needed
-            if start_pos > 0.0:
-                self._playbin.seek_simple(
-                    Gst.Format.TIME,
-                    Gst.SeekFlags.FLUSH | Gst.SeekFlags.KEY_UNIT,
-                    int(start_pos * Gst.SECOND)
-                )
-
-            self.current_song = song
-            self.state = "playing"
-            logger.info("GStreamer playing: %s (from %.1fs)", song, start_pos)
-            return True
-
-        except Exception as e:
-            logger.error("GStreamer play error for %s: %s", song.filepath, e)
-            self.state = "stopped"
-            return False
 
     def pause(self) -> None:
         """Pauses current playback."""
-        if not self.is_initialized or self.state != "playing":
-            return
-        try:
-            self._playbin.set_state(Gst.State.PAUSED)
-            self.state = "paused"
-            logger.info("Playback paused.")
-        except Exception as e:
-            logger.error("Failed to pause: %s", e)
+        with self._play_lock:
+            if not self.is_initialized or self.state != "playing":
+                return
+            try:
+                self._playbin.set_state(Gst.State.PAUSED)
+                self.state = "paused"
+                logger.info("Playback paused.")
+            except Exception as e:
+                logger.error("Failed to pause: %s", e)
 
     def resume(self) -> None:
         """Resumes paused playback."""
-        if not self.is_initialized or self.state != "paused":
-            return
-        try:
-            self._playbin.set_state(Gst.State.PLAYING)
-            self.state = "playing"
-            logger.info("Playback resumed.")
-        except Exception as e:
-            logger.error("Failed to resume: %s", e)
+        with self._play_lock:
+            if not self.is_initialized or self.state != "paused":
+                return
+            try:
+                self._playbin.set_state(Gst.State.PLAYING)
+                self.state = "playing"
+                logger.info("Playback resumed.")
+            except Exception as e:
+                logger.error("Failed to resume: %s", e)
 
     def stop(self) -> None:
         """Stops playback completely."""
-        if not self.is_initialized:
-            return
-        try:
-            self._playbin.set_state(Gst.State.NULL)
-            self.state = "stopped"
-            self.current_song = None
-            logger.info("Playback stopped.")
-        except Exception as e:
-            logger.error("Failed to stop: %s", e)
+        with self._play_lock:
+            if not self.is_initialized:
+                return
+            try:
+                self.playback_token += 1
+                self._playbin.set_state(Gst.State.NULL)
+                self.state = "stopped"
+                self.current_song = None
+                logger.info("Playback stopped.")
+            except Exception as e:
+                logger.error("Failed to stop: %s", e)
 
     def seek(self, position: float) -> None:
         """Seeks to the given position in seconds."""
@@ -193,17 +204,25 @@ class Player:
             )
             if msg is None:
                 continue
-            if msg.type == Gst.MessageType.EOS:
-                logger.info("Song finished playing naturally (GStreamer EOS).")
-                self.state = "stopped"
-                if self.on_song_end_callback:
-                    threading.Thread(target=self.on_song_end_callback, daemon=True).start()
-            elif msg.type == Gst.MessageType.ERROR:
-                err, debug = msg.parse_error()
-                logger.error("GStreamer error: %s | debug: %s", err, debug)
-                self.state = "stopped"
-                if self.on_song_end_callback:
-                    threading.Thread(target=self.on_song_end_callback, daemon=True).start()
+            
+            with self._play_lock:
+                if self.state != "playing":
+                    continue
+                
+                if msg.type == Gst.MessageType.EOS:
+                    logger.info("Song finished playing naturally (GStreamer EOS).")
+                    self.state = "stopped"
+                    self.playback_token += 1
+                    if self.on_song_end_callback:
+                        threading.Thread(target=self.on_song_end_callback, daemon=True).start()
+                
+                elif msg.type == Gst.MessageType.ERROR:
+                    err, debug = msg.parse_error()
+                    logger.error("GStreamer error: %s | debug: %s", err, debug)
+                    self.state = "stopped"
+                    self.playback_token += 1
+                    if self.on_song_end_callback:
+                        threading.Thread(target=self.on_song_end_callback, daemon=True).start()
 
     def close(self) -> None:
         """Cleans up GStreamer resources."""

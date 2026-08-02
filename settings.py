@@ -7,6 +7,7 @@ import json
 from typing import Any, Dict
 from config import SETTINGS_FILE, logger
 
+
 class Settings:
     """Manages the application settings and persistence."""
 
@@ -16,23 +17,30 @@ class Settings:
             "last_folder": None,
             "dark_mode": True,
             "shuffle": False,
-            "repeat": False,
+            # repeat stores the repeat mode string: "off", "all", or "single"
+            "repeat": "off",
             "last_song": None,
             "last_playlist": None,
-            "tray_icon_size": 64
+            "tray_icon_size": 64,
         }
         self.settings: Dict[str, Any] = self.defaults.copy()
         self.load()
 
     def load(self) -> None:
-        """Loads settings from settings.json or initializes them with defaults."""
+        """Loads settings from settings.json or initialises them with defaults."""
         if SETTINGS_FILE.exists():
             try:
                 with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
                     loaded = json.load(f)
-                    # Merge with defaults to ensure all keys are present
-                    for key, val in self.defaults.items():
-                        self.settings[key] = loaded.get(key, val)
+                # Merge with defaults to ensure all keys are present
+                for key, val in self.defaults.items():
+                    self.settings[key] = loaded.get(key, val)
+
+                # Migrate old boolean repeat to string (backwards compatibility)
+                if isinstance(self.settings.get("repeat"), bool):
+                    self.settings["repeat"] = "all" if self.settings["repeat"] else "off"
+                    logger.info("Migrated 'repeat' setting from bool to string.")
+
                 logger.info("Settings loaded successfully.")
             except Exception as e:
                 logger.error("Failed to load settings: %s. Using defaults.", e)
@@ -46,7 +54,6 @@ class Settings:
         try:
             with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
                 json.dump(self.settings, f, indent=4, ensure_ascii=False)
-            logger.info("Settings saved successfully.")
         except Exception as e:
             logger.error("Failed to save settings: %s", e)
 
