@@ -38,3 +38,8 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+# Flatpak build artifacts
+flatpak/repo/
+flatpak/build-dir/
+flatpak/.flatpak-builder/
+flatpak/build.log
