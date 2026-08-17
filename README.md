@@ -6,6 +6,18 @@
 
 ---
 
+## Screenshots
+
+<p align="center">
+  <img src="Screenshot_2026-08-14_19-11-19.png" width="45%" alt="PLY screenshot 1">
+  <img src="Screenshot_2026-08-14_19-12-04.png" width="45%" alt="PLY screenshot 2">
+</p>
+
+<p align="center">
+  <img src="Screenshot_2026-08-14_19-12-22.png" width="45%" alt="PLY screenshot 3">
+  <img src="Screenshot_2026-08-14_19-13-33.png" width="45%" alt="PLY screenshot 4">
+</p>
+
 ## Features
 
 * **Bimodal Interface**: Run in the terminal (CLI) or as a desktop application (GUI).
@@ -186,14 +198,3 @@ flatpak-builder --user --install --force-clean build-flatpak flatpak/io.github.a
 
 ## License
 This project is licensed under the **MIT License**. See the `LICENSE` file for more details.
-## Screenshots
-
-<p align="center">
-  <img src="Screenshot_2026-08-14_19-11-19.png" width="45%" alt="PLY screenshot 1">
-  <img src="Screenshot_2026-08-14_19-12-04.png" width="45%" alt="PLY screenshot 2">
-</p>
-
-<p align="center">
-  <img src="Screenshot_2026-08-14_19-12-22.png" width="45%" alt="PLY screenshot 3">
-  <img src="Screenshot_2026-08-14_19-13-33.png" width="45%" alt="PLY screenshot 4">
-</p>
