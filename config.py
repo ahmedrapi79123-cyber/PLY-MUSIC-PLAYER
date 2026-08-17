@@ -55,9 +55,13 @@ elif _SOURCE_ASSETS.exists():
 else:
     ASSETS_DIR = BASE_DIR / "assets"
 
-# Ensure all runtime directories exist
-for _dir in [DATA_DIR, LOGS_DIR, TEMP_DIR, CONFIG_DIR, ASSETS_DIR]:
+# Ensure all writable runtime directories exist.
+# ASSETS_DIR may point to a read-only /app path in Flatpak — skip it.
+for _dir in [DATA_DIR, LOGS_DIR, TEMP_DIR, CONFIG_DIR]:
     _dir.mkdir(parents=True, exist_ok=True)
+# Only create ASSETS_DIR if it's not already an installed (read-only) path
+if not _INSTALLED_ASSETS.exists():
+    ASSETS_DIR.mkdir(parents=True, exist_ok=True)
 
 # ---------------------------------------------------------------------------
 # File paths

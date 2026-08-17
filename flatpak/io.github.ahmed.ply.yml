@@ -2,40 +2,45 @@ app-id: io.github.ahmed.ply
 runtime: org.freedesktop.Platform
 runtime-version: '24.08'
 sdk: org.freedesktop.Sdk
-
-build-options:
-  env:
-    PYTHONPATH: /usr/lib/x86_64-linux-gnu/gobject-introspection
-
 command: ply
 
 finish-args:
-  # Display (X11 + Wayland)
+  # Display: X11 (primary for Zorin/XFCE) + Wayland
   - --share=ipc
   - --socket=x11
   - --socket=wayland
-  # Audio playback
+  # Audio playback via PulseAudio
   - --socket=pulseaudio
-  # MPRIS2 D-Bus ownership
+  # MPRIS2 D-Bus name ownership (required for media player MPRIS)
   - --own-name=org.mpris.MediaPlayer2.ply
-  # File access: user music directory only
+  # Music directory access (read-only)
   - --filesystem=xdg-music:ro
-  # Allow file chooser portal to grant access to other files
+  # File chooser portal (allows opening individual files)
   - --talk-name=org.freedesktop.portal.FileChooser
-  # D-Bus session bus for MPRIS notifications
+  # D-Bus session bus access (needed for MPRIS PropertiesChanged signals)
   - --talk-name=org.freedesktop.DBus
+  # AyatanaAppIndicator3 requires talk to com.canonical.indicator and StatusNotifierWatcher
+  - --talk-name=org.kde.StatusNotifierWatcher
+  - --talk-name=com.canonical.AppMenu.Registrar
 
 modules:
-  # Tcl/Tk for Tkinter GUI support
+  # ─────────────────────────────────────────────────────────────────────
+  # Tcl/Tk: required so Python's _tkinter module compiles correctly.
+  # We build Python from source after these so it picks up Tcl/Tk headers.
+  # ─────────────────────────────────────────────────────────────────────
   - name: tcl
     buildsystem: autotools
     subdir: unix
+    config-opts:
+      - --enable-shared
+      - --disable-symbols
     post-install:
       - chmod 755 /app/lib/libtcl*.so
     cleanup:
       - /bin
       - /lib/pkgconfig
       - /man
+      - /share/man
     sources:
       - type: archive
         url: https://prdownloads.sourceforge.net/tcl/tcl8.6.13-src.tar.gz
@@ -44,23 +49,31 @@ modules:
   - name: tk
     buildsystem: autotools
     subdir: unix
+    config-opts:
+      - --enable-shared
+      - --with-tcl=/app/lib
     post-install:
       - chmod 755 /app/lib/libtk*.so
     cleanup:
       - /bin
       - /lib/pkgconfig
       - /man
+      - /share/man
     sources:
       - type: archive
         url: https://prdownloads.sourceforge.net/tcl/tk8.6.13-src.tar.gz
         sha256: 2e65fa069a23365440a3c56c556b8673b5e32a283800d8d9b257e3f584ce0675
 
-  # Build Python from source so Tkinter (_tkinter) module compiles against the Tcl/Tk above
+  # ─────────────────────────────────────────────────────────────────────
+  # Python 3.11 built from source so _tkinter links against our Tcl/Tk.
+  # The Platform SDK's Python lacks _tkinter (no X11 headers during build).
+  # ─────────────────────────────────────────────────────────────────────
   - name: python3
     buildsystem: autotools
     config-opts:
       - --enable-shared
       - --with-ensurepip=upgrade
+      - --enable-optimizations
     post-install:
       - chmod +x /app/bin/python3
     cleanup:
@@ -70,8 +83,10 @@ modules:
       - type: archive
         url: https://www.python.org/ftp/python/3.11.9/Python-3.11.9.tar.xz
         sha256: 9b1e896523fc510691126c864406d9360a3d1e986acbda59cda57b5abda45b87
- 
-  # PyCairo - Python bindings for Cairo
+
+  # ─────────────────────────────────────────────────────────────────────
+  # PyCairo — Python bindings for Cairo (required by PyGObject)
+  # ─────────────────────────────────────────────────────────────────────
   - name: python3-pycairo
     buildsystem: meson
     config-opts:
@@ -81,7 +96,10 @@ modules:
         path: /home/ahmed/ply/flatpak/deps/pycairo-1.25.1.tar.gz
         sha256: 7e2be4fbc3b4536f16db7a11982cbf713e75069a4d73d44fe5a49b68423f5c0c
 
-  # PyGObject - Python bindings for GObject Introspection / GStreamer
+  # ─────────────────────────────────────────────────────────────────────
+  # PyGObject — Python bindings for GLib, Gio, Gst, Gtk
+  # Provides: gi, Gio, GLib, Gst, Gtk (no dbus-python needed)
+  # ─────────────────────────────────────────────────────────────────────
   - name: python3-pygobject
     buildsystem: meson
     config-opts:
@@ -91,46 +109,302 @@ modules:
         path: /home/ahmed/ply/flatpak/deps/pygobject-3.48.2.tar.gz
         sha256: c3c0a7afbe5b2c1c64dc0530109b4dd571085153dbedfbccb8ec7c5ad233f977
 
-  # Python dependencies (pip packages)
-  - name: python3-mutagen
+  # ─────────────────────────────────────────────────────────────────────
+  # System Tray stack: libdbusmenu → libayatana-indicator → libayatana-appindicator
+  # This enables `from gi.repository import AyatanaAppIndicator3`
+  # ─────────────────────────────────────────────────────────────────────
+ 
+  # intltool: required by libdbusmenu's autotools configure
+  - name: intltool
+    buildsystem: autotools
+    sources:
+      - type: archive
+        path: /home/ahmed/ply/flatpak/deps/intltool-0.51.0.tar.gz
+        sha256: 67c74d94196b153b774ab9f89b2fa6c6ba79352407037c8c14d5aeb334e959cd
+
+  # libdbusmenu: D-Bus menu protocol library
+  - name: libdbusmenu
+    buildsystem: simple
+
+    build-options:
+      env:
+        CFLAGS: '-Wno-error'
+        HAVE_VALGRIND_TRUE: '#'
+        HAVE_VALGRIND_FALSE: ''
+        HAVE_VALAC: 'no'
+        PYTHONPATH: '/usr/lib/x86_64-linux-gnu/gobject-introspection'
+
+    build-commands:
+      - |
+        mkdir -p /app/bin
+        cat > /app/bin/g-ir-scanner <<'EOF'
+        #!/bin/sh
+        export PYTHONPATH=/usr/lib/x86_64-linux-gnu/gobject-introspection${PYTHONPATH:+:$PYTHONPATH}
+        exec /usr/bin/python3.12 /usr/bin/g-ir-scanner "$@"
+        EOF
+        chmod +x /app/bin/g-ir-scanner
+
+      - |
+        mkdir -p /app/lib/pkgconfig
+        cp /usr/lib/x86_64-linux-gnu/pkgconfig/gobject-introspection-1.0.pc /app/lib/pkgconfig/
+        sed -i 's|^g_ir_scanner=.*|g_ir_scanner=/app/bin/g-ir-scanner|' /app/lib/pkgconfig/gobject-introspection-1.0.pc
+
+      - |
+        export PKG_CONFIG_PATH=/app/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}
+        export PYTHONPATH=/usr/lib/x86_64-linux-gnu/gobject-introspection
+
+        echo "Scanner:"
+        pkg-config --variable=g_ir_scanner gobject-introspection-1.0
+
+        echo "Testing gobject-introspection:"
+        /usr/bin/python3.12 -c "
+        import giscanner
+        from giscanner._giscanner import SourceScanner
+        print('giscanner Python 3.12: OK')
+        print(SourceScanner)
+        "
+
+        echo "Testing g-ir-scanner:"
+        /app/bin/g-ir-scanner --version
+
+      - |
+        export PKG_CONFIG_PATH=/app/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}
+        export PYTHONPATH=/usr/lib/x86_64-linux-gnu/gobject-introspection
+
+        ./configure \
+          --prefix=/app \
+          --libdir=/app/lib \
+          --with-gtk=3 \
+          --disable-dumper \
+          --disable-tests \
+          --disable-gtk-doc \
+          --disable-scrollkeeper \
+          --disable-valgrind \
+          --disable-nls \
+          --disable-vala
+
+      - |
+        export PKG_CONFIG_PATH=/app/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}
+        export PYTHONPATH=/usr/lib/x86_64-linux-gnu/gobject-introspection
+
+        make -j$FLATPAK_BUILDER_N_JOBS
+
+      - |
+        find . -type f \( -name 'Makefile' -o -name 'Makefile.in' \) -exec \
+          sed -i \
+          's|/usr/lib/x86_64-linux-gnu/girepository-1.0|/app/lib/girepository-1.0|g' {} +
+
+      - |
+        mkdir -p /app/lib/girepository-1.0
+        make install
+
+    cleanup:
+      - /include
+      - /lib/pkgconfig
+      - /share/doc
+      - /share/gtk-doc
+
+    sources:
+      - type: archive
+        path: /home/ahmed/ply/flatpak/deps/libdbusmenu-16.04.0.tar.gz
+        sha256: b9cc4a2acd74509435892823607d966d424bd9ad5d0b00938f27240a1bfa878a
+
+  - name: vala
+    buildsystem: autotools
+
+    config-opts:
+      - --prefix=/app
+      - --libdir=/app/lib
+      - --disable-unversioned
+      - --disable-valadoc
+
+    build-commands:
+      - make -j$FLATPAK_BUILDER_N_JOBS
+      - make install
+
+      - |
+        echo "=== Checking Vala installation ==="
+
+        echo "--- Installed Vala tools ---"
+        find /app -type f \( -name 'valac' -o -name 'vapigen' \) -ls || true
+
+        echo "--- Build tools ---"
+        ls -lh ./compiler/valac || true
+        ls -lh ./vapigen/vapigen || true
+
+        echo "--- /app/bin ---"
+        ls -lah /app/bin || true
+
+        if [ ! -x /app/bin/valac ]; then
+          echo "valac was not installed by make install; installing manually..."
+          mkdir -p /app/bin
+          cp ./compiler/valac /app/bin/valac
+          chmod +x /app/bin/valac
+        fi
+
+        if [ ! -x /app/bin/vapigen ]; then
+          echo "vapigen was not installed by make install; installing manually..."
+          mkdir -p /app/bin
+          cp ./vapigen/vapigen /app/bin/vapigen
+          chmod +x /app/bin/vapigen
+        fi
+
+        echo "--- Creating vapigen wrapper ---"
+
+        mv /app/bin/vapigen /app/bin/vapigen-real
+
+        cat > /app/bin/vapigen <<'EOF'
+        #!/bin/sh
+        set -e
+
+        GIR=""
+
+        for arg in "$@"; do
+          case "$arg" in
+            *.gir)
+              GIR="$arg"
+              ;;
+          esac
+        done
+
+        if [ -n "$GIR" ] && [ -f "$GIR" ]; then
+          echo "Cleaning unsupported doc:format from $GIR"
+          sed -i '/<doc:format name="unknown"\/>/d' "$GIR"
+        fi
+
+        exec /app/bin/vapigen-real "$@"
+        EOF
+
+        chmod +x /app/bin/vapigen
+
+        echo "--- Final tools ---"
+        ls -lh /app/bin/valac
+        ls -lh /app/bin/vapigen
+        ls -lh /app/bin/vapigen-real
+
+        echo "--- Versions ---"
+        /app/bin/valac --version
+        /app/bin/vapigen --version
+        /app/bin/vapigen-real --version
+
+    sources:
+      - type: archive
+        path: /home/ahmed/ply/flatpak/deps/vala-0.56.17.tar.xz
+        sha256: 26100c4e4ef0049c619275f140d97cf565883d00c7543c82bcce5a426934ed6a
+ 
+  - name: ayatana-ido
+    buildsystem: cmake-ninja
+
+    build-options:
+      append-path: /app/bin
+
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DCMAKE_INSTALL_PREFIX=/app
+      - -DCMAKE_INSTALL_LIBDIR=lib
+      - -DENABLE_TESTS=OFF
+      - -DENABLE_DOCUMENTATION=OFF
+      - -DVAPI_GEN=/app/bin/vapigen
+
+    sources:
+      - type: archive
+        path: /home/ahmed/ply/flatpak/deps/ayatana-ido-0.10.4.tar.gz
+        sha256: bd59abd5f1314e411d0d55ce3643e91cef633271f58126be529de5fb71c5ab38
+
+  - name: libayatana-indicator
+    buildsystem: cmake-ninja
+
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DENABLE_TESTS=OFF
+      - -DENABLE_DOCUMENTATION=OFF
+      - -DENABLE_GTK2=OFF
+      - -DENABLE_GTK3=ON
+
+    sources:
+      - type: archive
+        path: /home/ahmed/ply/flatpak/deps/libayatana-indicator-0.9.4.tar.gz
+        sha256: a18d3c682e29afd77db24366f8475b26bda22b0e16ff569a2ec71cd6eb4eac95
+
+  # libayatana-appindicator
+  - name: libayatana-appindicator
+    buildsystem: cmake-ninja
+
+    build-options:
+      append-path: /app/bin
+      append-ld-library-path: /app/lib
+
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DCMAKE_INSTALL_PREFIX=/app
+      - -DCMAKE_INSTALL_LIBDIR=lib
+      - -DENABLE_TESTS=OFF
+      - -DENABLE_GTKDOC=OFF
+      - -DENABLE_BINDINGS_MONO=OFF
+      - -DENABLE_BINDINGS_VALA=OFF
+      - -DFLAVOUR_GTK3=ON
+
+    cleanup:
+      - /include
+      - /lib/pkgconfig
+      - /share/vala
+
+    sources:
+      - type: archive
+        path: /home/ahmed/ply/flatpak/deps/libayatana-appindicator-0.5.93.tar.gz
+        sha256: cbefed7a918a227bf71286246e237fcd3a9c8499b3eaac4897811a869409edf0
+
+  # ─────────────────────────────────────────────────────────────────────
+  # Python pip packages (all installed as pre-built wheels where possible)
+  # ─────────────────────────────────────────────────────────────────────
+
+  # wheel + packaging + flit_core (build tools needed before source packages)
+  - name: python3-build-tools
     buildsystem: simple
     build-commands:
       - pip3 install --no-build-isolation --no-deps --prefix=/app wheel-0.47.0-py3-none-any.whl
       - pip3 install --no-build-isolation --no-deps --prefix=/app packaging-26.2-py3-none-any.whl
-      - pip3 install --no-build-isolation --no-deps --prefix=/app mutagen-1.47.0.tar.gz
+      - pip3 install --no-build-isolation --no-deps --prefix=/app flit_core-3.12.0-py3-none-any.whl
     sources:
       - type: file
         path: /home/ahmed/.cache/pip/wheels/a6/c2/e9/0355b8c17b9f348cb62c78437d19564722552d3ac1e6fab5d3/wheel-0.47.0-py3-none-any.whl
-
       - type: file
         path: /home/ahmed/.cache/pip/wheels/72/df/67/5e6ac184946d9baa4456f9d26022a020033822638865f584cf/packaging-26.2-py3-none-any.whl
         sha256: 9133c4da3077780e42ecb512cc3f22816da8311699b57d5eb0c4809356bd83b2
-
       - type: file
-        url: https://files.pythonhosted.org/packages/81/e6/64bc71b74eef4b68e61eb921dcf72dabd9e4ec4af1e11891bbd312ccbb77/mutagen-1.47.0.tar.gz
-        sha256: 719fadef0a978c31b4cf3c956261b3c58b6948b32023078a2117b1de09f0fc99
+        path: /home/ahmed/.cache/pip/wheels/62/b0/22/21a4bca454249e58ebae81f0066318371f1704cd4742260baf/flit_core-3.12.0-py3-none-any.whl
 
+  # mutagen — audio tag reading (pure-Python wheel, no build issues)
+  - name: python3-mutagen
+    buildsystem: simple
+    build-commands:
+      - pip3 install --no-build-isolation --no-deps --prefix=/app mutagen-1.47.0-py3-none-any.whl
+    sources:
+      - type: file
+        path: /home/ahmed/ply/flatpak/deps/mutagen-1.47.0-py3-none-any.whl
+        sha256: edd96f50c5907a9539d8e5bba7245f62c9f520aef333d13392a79a4f70aca719
+
+  # markdown-it-py (rich dependency)
   - name: python3-markdown-it-py
     buildsystem: simple
     build-commands:
-      - pip3 install --no-build-isolation --no-deps --prefix=/app flit_core-3.12.0-py3-none-any.whl
       - pip3 install --no-build-isolation --no-deps --prefix=/app markdown_it_py-4.2.0.tar.gz
     sources:
-      - type: file
-        path: /home/ahmed/.cache/pip/wheels/62/b0/22/21a4bca454249e58ebae81f0066318371f1704cd4742260baf/flit_core-3.12.0-py3-none-any.whl
       - type: file
         url: https://files.pythonhosted.org/packages/06/ff/7841249c247aa650a76b9ee4bbaeae59370dc8bfd2f6c01f3630c35eb134/markdown_it_py-4.2.0.tar.gz
         sha256: 04a21681d6fbb623de53f6f364d352309d4094dd4194040a10fd51833e418d49
 
+  # mdurl (markdown-it-py dependency)
   - name: python3-mdurl
     buildsystem: simple
     build-commands:
-      - pip3 install --no-build-isolation --prefix=/app mdurl-0.1.2.tar.gz
+      - pip3 install --no-build-isolation --no-deps --prefix=/app mdurl-0.1.2.tar.gz
     sources:
       - type: file
         url: https://files.pythonhosted.org/packages/d6/54/cfe61301667036ec958cb99bd3efefba235e65cdeb9c84d24a8293ba1d90/mdurl-0.1.2.tar.gz
         sha256: bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba
 
+  # Pygments (rich dependency)
   - name: python3-Pygments
     buildsystem: simple
     build-commands:
@@ -143,23 +417,20 @@ modules:
       - type: file
         path: /home/ahmed/ply/flatpak/deps/pathspec-1.1.1-py3-none-any.whl
         sha256: a00ce642f577bf7f473932318056212bc4f8bfdf53128c78bbd5af0b9b20b189
-
       - type: file
         path: /home/ahmed/ply/flatpak/deps/pluggy-1.6.0-py3-none-any.whl
         sha256: e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746
-
       - type: file
         path: /home/ahmed/ply/flatpak/deps/trove_classifiers-2026.6.1.19-py3-none-any.whl
         sha256: ab4c4ec93cc4a4e7815fa759906e05e6bb3f2fbd92ea0f897288c6a43efd15b3
-
       - type: file
         path: /home/ahmed/ply/flatpak/deps/hatchling-1.31.0-py3-none-any.whl
         sha256: aac80bec8b6fe35e8480f1c335be8910fa210a0e6f735a139be205dadcacb544
-
       - type: file
         url: https://files.pythonhosted.org/packages/c3/b2/bc9c9196916376152d655522fdcebac55e66de6603a76a02bca1b6414f6c/pygments-2.20.0.tar.gz
         sha256: 6757cd03768053ff99f3039c1a36d6c0aa0b263438fcab17520b30a303a82b5f
 
+  # rich — terminal formatting (used by PLY CLI/TUI)
   - name: python3-rich
     buildsystem: simple
     build-commands:
@@ -170,208 +441,39 @@ modules:
       - type: file
         path: /home/ahmed/ply/flatpak/deps/poetry_core-2.4.1-py3-none-any.whl
         sha256: acf06f9537cd2625bdaec926d95d90b557ba15353bc71d27a3a8a441042b5316
-
       - type: file
         path: /home/ahmed/ply/flatpak/deps/poetry-2.4.1-py3-none-any.whl
         sha256: a91f13279a3c9add0d12c5ca5c7cb173622930a5c8272fee68c751cb5c72f951
-
       - type: file
         url: https://files.pythonhosted.org/packages/c0/8f/0722ca900cc807c13a6a0c696dacf35430f72e0ec571c4275d2371fca3e9/rich-15.0.0.tar.gz
         sha256: edd07a4824c6b40189fb7ac9bc4c52536e9780fbbfbddf6f1e2502c31b068c36
 
+  # Pillow — image processing for cover art (cp311 manylinux wheel)
   - name: python3-pillow
     buildsystem: simple
     build-commands:
-      - pip3 install --no-build-isolation --no-deps --prefix=/app pillow-10.4.0.tar.gz
+      - pip3 install --no-build-isolation --no-deps --prefix=/app pillow-10.4.0-cp311-cp311-manylinux_2_28_x86_64.whl
     sources:
       - type: file
-        url: https://files.pythonhosted.org/packages/cd/74/ad3d526f3bf7b6d3f408b73fde271ec69dfac8b81341a318ce825f2b3812/pillow-10.4.0.tar.gz
-        sha256: 166c1cd4d24309b30d61f79f4a9114b7b2313d7450912277855ff5dfd7cd4a06
+        path: /home/ahmed/ply/flatpak/deps/pillow-10.4.0-cp311-cp311-manylinux_2_28_x86_64.whl
+        sha256: 76a911dfe51a36041f2e756b00f96ed84677cdeb75d25c767f296c1c1eda1319
 
-  # Graphviz - required by Vala
-  - name: graphviz
-    buildsystem: autotools
-    config-opts:
-      - --disable-docs
-      - --disable-tcl
-      - --disable-perl
-      - --disable-python
-      - --disable-ruby
-      - --disable-lua
-      - --disable-php
-      - --disable-go
-      - --disable-ocaml
-    sources:
-      - type: archive
-        url: https://gitlab.com/graphviz/graphviz/-/archive/12.2.1/graphviz-12.2.1.tar.gz
-        sha256: 91d444b4dabdaf5bfa7c6fcc3a1ee5d41e588af6079ebc030f0acb79e48a56ea
-
-  # Vala compiler - required by Ayatana Ido/AppIndicator
-  - name: vala
-    buildsystem: autotools
-    sources:
-      - type: archive
-        url: https://download.gnome.org/sources/vala/0.56/vala-0.56.17.tar.xz
-        sha256: 26100c4e4ef0049c619275f140d97cf565883d00c7543c82bcce5a426934ed6a
-
-  # Ayatana Ido - dependency for Ayatana Indicator
-  - name: ayatana-ido
-    buildsystem: cmake-ninja
-    config-opts:
-      - -DENABLE_TESTS=OFF
-      - -DENABLE_DOCS=OFF
-    sources:
-      - type: archive
-        url: https://github.com/AyatanaIndicators/ayatana-ido/archive/refs/tags/0.10.1.tar.gz
-        sha256: 26187915a6f3402195e2c78d9e8a54549112a3cd05bb2fbe2059d3e78fc0e071
-
-  # Ayatana Indicator - required by libayatana-appindicator
-  - name: libayatana-indicator
-    buildsystem: cmake-ninja
-    config-opts:
-      - -DCMAKE_INSTALL_PREFIX=/app
-      - -DCMAKE_INSTALL_LIBDIR=lib
-      - -DENABLE_TESTS=OFF
-      - -DENABLE_DOCS=OFF
-    sources:
-      - type: archive
-        url: https://github.com/AyatanaIndicators/libayatana-indicator/archive/refs/tags/0.9.3.tar.gz
-        sha256: 09c5456fcb430b6ee0626fafdf99a32eb8746b267d56ab2bd4c8a8dd6ca731da
-
-  # intltool - required by libdbusmenu
-  - name: intltool
-    buildsystem: autotools
-    sources:
-      - type: archive
-        url: https://launchpad.net/intltool/trunk/0.51.0/+download/intltool-0.51.0.tar.gz
-        sha256: 67c74d94196b153b774ab9f89b2fa6c6ba79352407037c8c14d5aeb334e959cd
-
-  # D-Bus Menu
-  - name: libdbusmenu
-    buildsystem: simple
-    build-commands:
-      # Fix old libdbusmenu configure.ac for modern Autoconf.
-      - |
-        python3 - <<'PY'
-        p = "configure.ac"
-        s = open(p).read()
-
-        lines = [
-            line for line in s.splitlines()
-            if "AM_CONDITIONAL([HAVE_VALGRIND]" not in line
-        ]
-        s = "\n".join(lines) + "\n"
-
-        marker = 'AS_IF([test "x$enable_tests" != "xno"],['
-
-        if "have_valgrind=no" not in s:
-            if marker not in s:
-                raise SystemExit(
-                    "ERROR: Could not find test AS_IF block"
-                )
-
-            s = s.replace(
-                marker,
-                "have_valgrind=no\n\n" + marker,
-                1
-            )
-
-        needle = (
-            'PKG_CHECK_MODULES(DBUSMENUTESTSVALGRIND, '
-            'valgrind, have_valgrind=yes, have_valgrind=no)\n'
-            '])'
-        )
-
-        replacement = (
-            'PKG_CHECK_MODULES(DBUSMENUTESTSVALGRIND, '
-            'valgrind, have_valgrind=yes, have_valgrind=no)\n'
-            '])\n'
-            'AM_CONDITIONAL([HAVE_VALGRIND], '
-            '[test "x$have_valgrind" = "xyes"])'
-        )
-
-        if needle not in s:
-            raise SystemExit(
-                "ERROR: Could not find expected Valgrind block"
-            )
-
-        s = s.replace(needle, replacement, 1)
-
-        open(p, "w").write(s)
-        PY
-
-      - autoreconf -fi
-
-      - |
-        ./configure \
-          --prefix=/app \
-          --disable-gtk-doc \
-          --disable-tests \
-          --disable-dumper
-
-      # libdbusmenu uses deprecated GLib APIs.
-      - |
-        find . -type f \( -name 'Makefile' -o -name 'Makefile.in' \) \
-          -exec sed -i 's/-Werror//g' {} +
-
-      - make -j$FLATPAK_BUILDER_N_JOBS
-
-      # Fix GObject Introspection typelib installation path.
-      - |
-        find . -type f \( -name 'Makefile' -o -name 'Makefile.in' \) \
-          -exec sed -i \
-          's|/usr/lib/x86_64-linux-gnu/girepository-1.0|/app/lib/girepository-1.0|g' {} +
-
-        mkdir -p /app/lib/girepository-1.0
-
-      - make install
-
-    sources:
-      - type: archive
-        url: https://launchpad.net/libdbusmenu/16.04/16.04.0/+download/libdbusmenu-16.04.0.tar.gz
-        sha256: b9cc4a2acd74509435892823607d966d424bd9ad5d0b00938f27240a1bfa878a
-
-
-  # Ayatana AppIndicator3 - system tray backend for GTK3
-  - name: libayatana-appindicator
-    buildsystem: cmake-ninja
-    config-opts:
-      - -DCMAKE_INSTALL_PREFIX=/app
-      - -DCMAKE_INSTALL_LIBDIR=lib
-      - -DFLAVOUR_GTK3=ON
-      - -DFLAVOUR_GTK2=OFF
-      - -DENABLE_BINDINGS_VALA=ON
-      - -DENABLE_BINDINGS_MONO=OFF
-      - -DENABLE_TESTS=OFF
-      - -DENABLE_GTKDOC=OFF
-      - -DENABLE_INTROSPECTION=ON
-
-    sources:
-      - type: archive
-        url: https://github.com/AyatanaIndicators/libayatana-appindicator/archive/refs/tags/0.5.94.tar.gz
-        sha256: 884a6bc77994c0b58c961613ca4c4b974dc91aa0f804e70e92f38a542d0d0f90
-
-
-  # System tray support
-  - name: python3-pystray
-    buildsystem: simple
-    build-commands:
-      - pip3 install --no-build-isolation --no-deps --prefix=/app pystray-0.19.5-py2.py3-none-any.whl
-    sources:
-      - type: file
-        path: /home/ahmed/ply/flatpak/deps/pystray-0.19.5-py2.py3-none-any.whl
-        sha256: a0c2229d02cf87207297c22d86ffc57c86c227517b038c0d3c59df79295ac617
-
-
+  # ─────────────────────────────────────────────────────────────────────
   # PLY application
+  # ─────────────────────────────────────────────────────────────────────
   - name: ply
     buildsystem: simple
     build-commands:
+      # Install PLY Python package
       - pip3 install --no-build-isolation --prefix=/app .
+      # Desktop entry
       - install -Dm644 flatpak/io.github.ahmed.ply.desktop /app/share/applications/io.github.ahmed.ply.desktop
+      # AppStream metadata
       - install -Dm644 flatpak/io.github.ahmed.ply.metainfo.xml /app/share/metainfo/io.github.ahmed.ply.metainfo.xml
+      # Application icon (multiple sizes)
       - install -Dm644 music.png /app/share/icons/hicolor/512x512/apps/io.github.ahmed.ply.png
       - install -Dm644 assets/music.png /app/share/icons/hicolor/128x128/apps/io.github.ahmed.ply.png
+      # Install assets
       - mkdir -p /app/share/ply/assets
       - cp -r assets/* /app/share/ply/assets/
     sources:

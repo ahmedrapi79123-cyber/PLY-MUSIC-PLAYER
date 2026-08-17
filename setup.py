@@ -17,14 +17,17 @@ setup(
         "main", "cli", "gui", "player", "playlist",
         "library", "settings", "config", "themes", "icons", "utils", "mpris",
     ],
-    install_requires=[
-        "mutagen>=1.46.0",
-        "rich>=13.0.0",
-        "pillow>=10.0.0",
-        # pystray is optional (system tray support) — gracefully skipped if absent.
-        # Install it with: pip install pystray>=0.19.5
-    ],
+    # NOTE: install_requires is intentionally empty here.
+    # In Flatpak, all dependencies (mutagen, rich, pillow, pystray) are
+    # pre-installed by the manifest modules before this package.
+    # For native/pip installs, use: pip install ply-player[tray]
+    install_requires=[],
     extras_require={
+        "full": [
+            "mutagen>=1.46.0",
+            "rich>=13.0.0",
+            "pillow>=10.0.0",
+        ],
         "tray": ["pystray>=0.19.5"],
     },
     entry_points={

@@ -23,11 +23,26 @@ from utils import format_time, clean_temp_dir
 from icons import generate_default_assets
 
 try:
-    import pystray
+    import gi
+    gi.require_version("AyatanaAppIndicator3", "0.1")
+    gi.require_version("Gtk", "3.0")
+    from gi.repository import AyatanaAppIndicator3 as AppIndicator  # type: ignore
+    from gi.repository import Gtk as _Gtk  # type: ignore
     TRAY_AVAILABLE = True
-except ImportError:
-    TRAY_AVAILABLE = False
-    logger.warning("pystray not installed. System tray icon unavailable.")
+    TRAY_BACKEND = "appindicator"
+    logger.info("System tray backend: AyatanaAppIndicator3")
+except (ImportError, ValueError):
+    try:
+        # Fallback: pystray (for native non-Flatpak installs)
+        import pystray
+        from PIL import Image as _PilImage
+        TRAY_AVAILABLE = True
+        TRAY_BACKEND = "pystray"
+        logger.info("System tray backend: pystray (fallback)")
+    except ImportError:
+        TRAY_AVAILABLE = False
+        TRAY_BACKEND = "none"
+        logger.warning("No system tray backend available (install libayatana-appindicator3 or pystray).")
 
 class GUI:
     """Tkinter-based Graphical User Interface for the PLY music player."""
@@ -83,6 +98,8 @@ class GUI:
 
         # System tray icon state
         self._tray_icon = None
+        self._tray_menu = None          # GTK menu (AppIndicator backend)
+        self._tray_glib_loop = None     # GLib.MainLoop for tray GTK events
         self._tray_thread: Optional[threading.Thread] = None
         self._app_quitting = False
 
@@ -795,7 +812,7 @@ class GUI:
         else:
             self.playlist.repeat_mode = "off"
         
-        self.settings.set("repeat", self.playlist.repeat_mode != "off")
+        self.settings.set("repeat", self.playlist.repeat_mode)
 
         # Update styling
         theme = self.theme_mgr.get_gui_theme()
@@ -897,30 +914,171 @@ class GUI:
         self.root.focus_force()
 
     def _start_tray_icon(self) -> None:
-        """Start the pystray icon in a background thread."""
+        """Start system tray icon using AyatanaAppIndicator3 (preferred) or pystray (fallback)."""
         if not TRAY_AVAILABLE:
             return
+        if TRAY_BACKEND == "appindicator":
+            self._start_tray_appindicator()
+        elif TRAY_BACKEND == "pystray":
+            self._start_tray_pystray()
+
+    def _start_tray_appindicator(self) -> None:
+        """Start tray icon via AyatanaAppIndicator3."""
+        try:
+            import gi
+            gi.require_version("Gtk", "3.0")
+            gi.require_version("GLib", "2.0")
+
+            from gi.repository import Gtk as _Gtk
+            from gi.repository import GLib as _GLib
+
+            # ---------------------------------------------------------
+            # Icon
+            # ---------------------------------------------------------
+            icon_path = ASSETS_DIR / "music.png"
+
+            if not icon_path.exists():
+                icon_path = Path(
+                    "/app/share/icons/hicolor/128x128/apps/"
+                    "io.github.ahmed.ply.png"
+                )
+
+            if icon_path.exists():
+                icon_theme = _Gtk.IconTheme.get_default()
+
+                # Make Flatpak application icon directory visible to GTK
+                icon_theme.append_search_path("/app/share/icons")
+                icon_theme.append_search_path("/app/share/icons/hicolor/128x128/apps")
+
+                icon_name = "io.github.ahmed.ply"
+
+                logger.info(
+                    "Tray icon configured: name=%s path=%s",
+                    icon_name,
+                    icon_path,
+                )
+            else:
+                icon_name = "audio-x-generic"
+                logger.warning("PLY tray icon file not found.")
+
+            # ---------------------------------------------------------
+            # Create AppIndicator
+            # ---------------------------------------------------------
+            indicator = AppIndicator.Indicator.new(
+                "ply-music-player",
+                icon_name,
+                AppIndicator.IndicatorCategory.APPLICATION_STATUS,
+            )
+
+            indicator.set_status(
+                AppIndicator.IndicatorStatus.ACTIVE
+            )
+
+            indicator.set_title("PLY Music Player")
+
+            # ---------------------------------------------------------
+            # Build GTK menu
+            # ---------------------------------------------------------
+            menu = _Gtk.Menu()
+
+            item_open = _Gtk.MenuItem(label="Open PLY")
+            item_open.connect(
+                "activate",
+                lambda _: self.root.after(0, self.show_window)
+            )
+            menu.append(item_open)
+
+            menu.append(_Gtk.SeparatorMenuItem())
+
+            item_prev = _Gtk.MenuItem(label="⏮ Previous")
+            item_prev.connect(
+                "activate",
+                lambda _: self.root.after(0, self._prev_song)
+            )
+            menu.append(item_prev)
+
+            item_pp = _Gtk.MenuItem(label="▶/⏸ Play/Pause")
+            item_pp.connect(
+                "activate",
+                lambda _: self.root.after(0, self._toggle_play_pause)
+            )
+            menu.append(item_pp)
+
+            item_next = _Gtk.MenuItem(label="⏭ Next")
+            item_next.connect(
+                "activate",
+                lambda _: self.root.after(0, self._next_song)
+            )
+            menu.append(item_next)
+
+            menu.append(_Gtk.SeparatorMenuItem())
+
+            item_quit = _Gtk.MenuItem(label="⏹ Quit PLY")
+            item_quit.connect(
+                "activate",
+                lambda _: self.root.after(0, self._quit_app)
+            )
+            menu.append(item_quit)
+
+            menu.show_all()
+            indicator.set_menu(menu)
+
+            # ---------------------------------------------------------
+            # Keep references alive
+            # ---------------------------------------------------------
+            self._tray_icon = indicator
+            self._tray_menu = menu
+
+            # ---------------------------------------------------------
+            # GLib event loop
+            # ---------------------------------------------------------
+            self._tray_glib_loop = _GLib.MainLoop()
+
+            self._tray_thread = threading.Thread(
+                target=self._tray_glib_loop.run,
+                daemon=True,
+                name="tray-glib",
+            )
+
+            self._tray_thread.start()
+
+            logger.info(
+                "AyatanaAppIndicator3 tray icon started "
+                "(icon name: %s, path: %s).",
+                icon_name,
+                icon_path,
+            )
+
+        except Exception as e:
+            logger.exception(
+                "Failed to create AyatanaAppIndicator3 tray icon: %s",
+                e,
+            )
+            self._tray_icon = None
+
+    def _start_tray_pystray(self) -> None:
+        """Fallback: start pystray tray icon (for native non-Flatpak installs)."""
         try:
             icon_path = ASSETS_DIR / "music.png"
             if not icon_path.exists():
                 icon_path = Path("/usr/share/pixmaps/music.png")
+            import pystray as _pystray
             tray_image = Image.open(icon_path).resize((64, 64))
-
-            menu = pystray.Menu(
-                pystray.MenuItem("Open PLY", lambda icon, item: self.root.after(0, self.show_window)),
-                pystray.Menu.SEPARATOR,
-                pystray.MenuItem("⏮ Previous",  lambda icon, item: self.root.after(0, self._prev_song)),
-                pystray.MenuItem("▶/⏸ Play/Pause", lambda icon, item: self.root.after(0, self._toggle_play_pause)),
-                pystray.MenuItem("⏭ Next",   lambda icon, item: self.root.after(0, self._next_song)),
-                pystray.Menu.SEPARATOR,
-                pystray.MenuItem("⏹ Quit PLY", lambda icon, item: self.root.after(0, self._quit_app)),
+            menu = _pystray.Menu(
+                _pystray.MenuItem("Open PLY", lambda icon, item: self.root.after(0, self.show_window)),
+                _pystray.Menu.SEPARATOR,
+                _pystray.MenuItem("\u23ee Previous", lambda icon, item: self.root.after(0, self._prev_song)),
+                _pystray.MenuItem("\u25b6/\u23f8 Play/Pause", lambda icon, item: self.root.after(0, self._toggle_play_pause)),
+                _pystray.MenuItem("\u23ed Next", lambda icon, item: self.root.after(0, self._next_song)),
+                _pystray.Menu.SEPARATOR,
+                _pystray.MenuItem("\u23f9 Quit PLY", lambda icon, item: self.root.after(0, self._quit_app)),
             )
-            self._tray_icon = pystray.Icon("ply", tray_image, "PLY Music Player", menu)
+            self._tray_icon = _pystray.Icon("ply", tray_image, "PLY Music Player", menu)
             self._tray_thread = threading.Thread(target=self._tray_icon.run, daemon=True)
             self._tray_thread.start()
-            logger.info("System tray icon started.")
+            logger.info("pystray tray icon started (fallback backend).")
         except Exception as e:
-            logger.warning("Failed to create system tray icon: %s", e)
+            logger.warning("Failed to create pystray tray icon: %s", e)
             self._tray_icon = None
 
 
@@ -943,9 +1101,15 @@ class GUI:
     def _quit_app(self) -> None:
         """Full application quit: stop music, destroy tray, close window."""
         self._app_quitting = True
+        # Stop tray icon (backend-agnostic)
         if self._tray_icon:
             try:
-                self._tray_icon.stop()
+                if TRAY_BACKEND == "appindicator":
+                    self._tray_icon.set_status(AppIndicator.IndicatorStatus.PASSIVE)
+                    if hasattr(self, "_tray_glib_loop") and self._tray_glib_loop:
+                        self._tray_glib_loop.quit()
+                elif TRAY_BACKEND == "pystray":
+                    self._tray_icon.stop()
             except Exception:
                 pass
             self._tray_icon = None
