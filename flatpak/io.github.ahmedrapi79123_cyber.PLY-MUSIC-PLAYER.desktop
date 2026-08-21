@@ -2,7 +2,7 @@
 Name=PLY
 Comment=Simple and lightweight music player
 Exec=ply --gui %U
-Icon=io.github.ahmed.ply
+Icon=io.github.ahmedrapi79123_cyber.PLY-MUSIC-PLAYER
 Terminal=false
 Type=Application
 Categories=AudioVideo;Audio;Player;Music;

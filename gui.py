@@ -940,7 +940,7 @@ class GUI:
             if not icon_path.exists():
                 icon_path = Path(
                     "/app/share/icons/hicolor/128x128/apps/"
-                    "io.github.ahmed.ply.png"
+                    "io.github.ahmedrapi79123_cyber.PLY-MUSIC-PLAYER.png"
                 )
 
             if icon_path.exists():
@@ -950,7 +950,7 @@ class GUI:
                 icon_theme.append_search_path("/app/share/icons")
                 icon_theme.append_search_path("/app/share/icons/hicolor/128x128/apps")
 
-                icon_name = "io.github.ahmed.ply"
+                icon_name = "io.github.ahmedrapi79123_cyber.PLY-MUSIC-PLAYER"
 
                 logger.info(
                     "Tray icon configured: name=%s path=%s",

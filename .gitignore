@@ -43,3 +43,8 @@ flatpak/repo/
 flatpak/build-dir/
 flatpak/.flatpak-builder/
 flatpak/build.log
+
+# Flatpak build artifacts
+repo/
+*.yml.bak
+threading

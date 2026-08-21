@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>io.github.ahmed.ply</id>
+  <id>io.github.ahmedrapi79123_cyber.PLY-MUSIC-PLAYER</id>
 
   <name>PLY</name>
   <summary>Simple and lightweight music player</summary>
@@ -28,7 +28,7 @@
     </ul>
   </description>
 
-  <launchable type="desktop-id">io.github.ahmed.ply.desktop</launchable>
+  <launchable type="desktop-id">io.github.ahmedrapi79123_cyber.PLY-MUSIC-PLAYER.desktop</launchable>
 
   <provides>
     <binary>ply</binary>
@@ -71,17 +71,12 @@
     </release>
   </releases>
 
-  <!-- Screenshots must use a stable tag URL before Flathub submission.
-       Replace 'TAG' below with the actual git tag for the release,
-       e.g. https://raw.githubusercontent.com/ahmedrapi79123-cyber/PLY-MUSIC-PLAYER/v1.0.0/screenshots/main.png
-  -->
-  <!--
+
   <screenshots>
     <screenshot type="default">
       <caption>PLY Music Player - Main Interface</caption>
-      <image>https://raw.githubusercontent.com/ahmedrapi79123-cyber/PLY-MUSIC-PLAYER/v1.0.0/screenshots/main.png</image>
+      <image>https://raw.githubusercontent.com/ahmedrapi79123-cyber/PLY-MUSIC-PLAYER/v1.0.0/Screenshot_2026-08-14_19-12-04.png</image>
     </screenshot>
   </screenshots>
-  -->
 
 </component>

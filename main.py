@@ -67,7 +67,35 @@ def _raise_existing_instance() -> None:
 def parse_arguments() -> argparse.Namespace:
     """Parses command line arguments."""
     parser = argparse.ArgumentParser(
-        description="PLY - A professional, modern command-line and graphical music player."
+        description="PLY - A professional, modern command-line and graphical music player.",
+        epilog="""Examples:
+  ply ~/Music
+      Play music from a directory using CLI mode.
+
+  ply --gui
+      Launch the graphical interface.
+
+  ply --gui ~/Music
+      Launch the GUI and scan ~/Music.
+
+  flatpak run io.github.ahmedrapi79123_cyber.PLY-MUSIC-PLAYER
+      Launch PLY GUI through Flatpak.
+
+  flatpak run io.github.ahmedrapi79123_cyber.PLY-MUSIC-PLAYER ~/Music
+      Play ~/Music through Flatpak CLI mode.
+
+  flatpak run io.github.ahmedrapi79123_cyber.PLY-MUSIC-PLAYER --gui
+      Launch the PLY GUI through Flatpak.
+
+  flatpak run io.github.ahmedrapi79123_cyber.PLY-MUSIC-PLAYER --shuffle ~/Music
+      Play music with shuffle enabled.
+
+  flatpak run io.github.ahmedrapi79123_cyber.PLY-MUSIC-PLAYER --repeat ~/Music
+      Play music with repeat enabled.
+
+  flatpak run io.github.ahmedrapi79123_cyber.PLY-MUSIC-PLAYER --volume 50 ~/Music
+      Start playback at 50% volume.""",
+        formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument(
         "path", nargs="?", type=str, default=None,
