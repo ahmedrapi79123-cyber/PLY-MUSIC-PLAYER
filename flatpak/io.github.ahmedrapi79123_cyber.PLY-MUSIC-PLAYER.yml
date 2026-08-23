@@ -362,8 +362,8 @@ modules:
   - cp -r assets/* /app/share/ply/assets/
 finish-args:
   - --share=ipc
-  - --socket=x11
   - --socket=wayland
+  - --socket=fallback-x11
   - --socket=pulseaudio
   - --own-name=org.mpris.MediaPlayer2.ply
   - --filesystem=xdg-music:ro
