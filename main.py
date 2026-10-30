@@ -72,6 +72,9 @@ def parse_arguments() -> argparse.Namespace:
   ply ~/Music
       Play music from a directory using CLI mode.
 
+  ply --cli
+      Launch the terminal interface.
+
   ply --gui
       Launch the graphical interface.
 
@@ -106,6 +109,10 @@ def parse_arguments() -> argparse.Namespace:
         help="Force launch the graphical user interface."
     )
     parser.add_argument(
+        "--cli", action="store_true",
+        help="Force launch the terminal interface."
+    )
+    parser.add_argument(
         "--shuffle", action="store_true",
         help="Enable shuffle mode for playback."
     )
@@ -125,6 +132,9 @@ def main() -> None:
 
     # Determine execution mode early (needed for single-instance check)
     run_gui = args.gui or (len(sys.argv) == 1)
+
+    if args.cli and not args.gui:
+        run_gui = False
 
     # ── Single-instance guard (GUI mode only) ────────────────────────────
     if run_gui:

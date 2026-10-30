@@ -1057,22 +1057,24 @@ class GUI:
             # ---------------------------------------------------------
             # Icon
             # ---------------------------------------------------------
+            
+            icon_dirs = [
+                Path("/app/share/icons/hicolor/128x128/apps"),
+                Path("/usr/share/icons/hicolor/128x128/apps"),
+            ]
+            icon_name = "io.github.ahmedrapi79123_cyber.PLY-MUSIC-PLAYER"
             icon_path = ASSETS_DIR / "music.png"
 
-            if not icon_path.exists():
-                icon_path = Path(
-                    "/app/share/icons/hicolor/128x128/apps/"
-                    "io.github.ahmedrapi79123_cyber.PLY-MUSIC-PLAYER.png"
-                )
+            for icon_dir in icon_dirs:
+                if (icon_dir / f"{icon_name}.png").exists():
+                    icon_path = icon_dir / f"{icon_name}.png"
+                    break
 
             if icon_path.exists():
                 icon_theme = _Gtk.IconTheme.get_default()
+                icon_theme.append_search_path(str(icon_path.parent))
 
-                # Make Flatpak application icon directory visible to GTK
-                icon_theme.append_search_path("/app/share/icons")
-                icon_theme.append_search_path("/app/share/icons/hicolor/128x128/apps")
-
-                icon_name = "io.github.ahmedrapi79123_cyber.PLY-MUSIC-PLAYER"
+                icon_name = icon_path.stem
 
                 logger.info(
                     "Tray icon configured: name=%s path=%s",
