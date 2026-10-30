@@ -91,6 +91,8 @@ class GUI:
         # Start periodic GUI updates
         self._update_loop()
 
+        self._bind_shortcuts()
+
         # Window closing handler — hides to tray instead of quitting
         self.root.protocol("WM_DELETE_WINDOW", self._hide_to_tray)
 
@@ -121,6 +123,59 @@ class GUI:
             except Exception as e:
                 logger.error("Failed to set window icon: %s", e)
 
+
+    def _bind_shortcuts(self) -> None:
+        self.root.bind("<space>", self._on_space)
+        self.root.bind("n", self._on_next_sound)
+        self.root.bind("b", self._on_prev_song)
+        self.root.bind("<Down>", self._on_next_sound)
+        self.root.bind("<Up>", self._on_prev_song)
+        self.root.bind("s", self._on_key_s)
+        self.root.bind("<h>", self._on_key_h)
+        self.root.bind("<r>", self._on_key_r)
+        self.root.bind("<m>", self._on_key_m)
+
+    def _on_space(self, event):
+        if self.root.focus_get() is self.search_entry:
+            return
+        self._toggle_play_pause()
+        return "break"
+
+    def _on_next_sound(self, event):
+        if self.root.focus_get() is self.search_entry:
+            return
+        self._next_song()
+        return "break"
+
+    def _on_prev_song(self, event):
+        if self.root.focus_get() is self.search_entry:
+            return
+        self._prev_song()
+        return "break"
+
+    def _on_key_s(self, event):
+        if self.root.focus_get() is self.search_entry:
+            return
+        self.player.stop()
+        return "break"
+
+    def _on_key_h(self, event):
+        if self.root.focus_get() is self.search_entry:
+            return
+        self._toggle_shuffle()
+        return "break"
+
+    def _on_key_r(self, event):
+        if self.root.focus_get() is self.search_entry:
+            return
+        self._toggle_repeat()
+        return "break"
+
+    def _on_key_m(self, event):
+        if self.root.focus_get() is self.search_entry:
+            return
+        self._toggle_mute()
+        return "break"
 
     def _create_widgets(self) -> None:
         """Builds all panels and widgets inside the main window."""
@@ -1263,4 +1318,5 @@ class GUI:
 
     def run(self) -> None:
         """Starts the Tkinter main event loop."""
+
         self.root.mainloop()
