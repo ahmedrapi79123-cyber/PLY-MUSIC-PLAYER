@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111114">
+  <title>PLY — مشغّل الوسائط</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#" aria-label="PLY الرئيسية"><span class="brand-mark">p<span>.</span></span><span class="brand-name">ply</span></a>
+      <div class="side-label">المكتبة</div>
+      <button class="nav-item active" data-view="all"><span class="nav-icon">▦</span> كل الوسائط <span class="nav-count" id="all-count">0</span></button>
+      <button class="nav-item" data-view="audio"><span class="nav-icon">♫</span> الصوتيات <span class="nav-count" id="audio-count">0</span></button>
+      <button class="nav-item" data-view="video"><span class="nav-icon">▹</span> الفيديوهات <span class="nav-count" id="video-count">0</span></button>
+      <div class="side-label playlist-label">قوائم التشغيل <button class="tiny-add" id="add-playlist" title="استيراد قائمة M3U">＋</button></div>
+      <div class="playlist-hint">استورد ملف M3U لعرض محتوياته هنا.</div>
+      <div class="sidebar-bottom"><div class="storage-icon">◷</div><div><strong>وسائطك، بطريقتك</strong><p>تشغيل مباشر من جهازك</p></div></div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div class="breadcrumb"><span>المكتبة</span><b>/</b><strong id="view-title">كل الوسائط</strong></div>
+        <div class="top-actions"><button class="icon-button" id="theme-toggle" title="تبديل المظهر">☼</button><button class="profile">م</button></div>
+      </header>
+      <section class="welcome-row"><div><div class="eyebrow"><i></i> مساحة الاستماع الخاصة بك</div><h1>مساء الخير<span>،</span> جاهز للتشغيل؟</h1><p>أضف ملفاتك وابدأ الاستماع أو المشاهدة.</p></div><button class="primary-button" id="open-files"><span>＋</span> أضف وسائط</button></section>
+      <section class="hero-card">
+        <div class="hero-copy"><div class="hero-tag"><span>✳</span> مشغّلك، على مزاجك</div><h2>كل ما تحب.<br>في مكان واحد.</h2><p>شغّل ملفات MP3 وMP4 واستورد قوائم M3U بكل سهولة.</p><button class="hero-button" id="hero-import">ابدأ بإضافة ملفاتك <span>←</span></button></div>
+        <div class="hero-art" aria-hidden="true"><div class="orb orb-one"></div><div class="orb orb-two"></div><div class="disc"><div class="disc-groove"></div><div class="disc-center">p<span>.</span></div></div><div class="sound-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span class="art-note note-a">♫</span><span class="art-note note-b">♪</span></div>
+      </section>
+      <section class="library-section">
+        <div class="section-heading"><div><h2 id="section-title">أضيفت مؤخرًا</h2><span id="item-summary">ملفاتك ستظهر هنا</span></div><div class="list-tools"><label class="search-box"><span>⌕</span><input id="search" type="search" placeholder="ابحث في مكتبتك"></label><button class="sort-button" id="sort-button">الأحدث أولًا <span>⌄</span></button></div></div>
+        <div class="track-head"><span>العنوان</span><span>النوع</span><span>المدة</span><span>إجراء</span></div>
+        <div class="track-list" id="track-list"><div class="empty-state"><div class="empty-icon">♫</div><strong>مكتبتك لسه فاضية</strong><p>اسحب ملفات MP3 أو MP4 إلى هنا، أو اخترها من جهازك.</p><button class="outline-button" id="empty-import">اختار ملفات</button></div></div>
+      </section>
+      <input id="file-input" type="file" accept="audio/*,video/*,.mp3,.mp4,.m3u,.m3u8" multiple hidden>
+      <input id="playlist-input" type="file" accept=".m3u,.m3u8,audio/x-mpegurl,application/vnd.apple.mpegurl" hidden>
+      <input id="folder-input" type="file" webkitdirectory multiple hidden>
+    </main>
+
+    <aside class="now-playing"><div class="now-heading"><span>يُشغّل الآن</span><button id="queue-toggle" title="قائمة التشغيل">☷</button></div>
+      <div class="cover-wrap" id="cover-wrap"><div class="cover-art"><div class="cover-rings"></div><div class="cover-logo">p<span>.</span></div><div class="cover-caption">PLY<br><small>YOUR SOUND</small></div></div><span class="cover-badge">♫</span></div>
+      <div class="track-meta"><strong id="now-title">لا يوجد شيء قيد التشغيل</strong><span id="now-subtitle">أضف ملفاتك للبدء</span><button class="more-button">···</button></div>
+      <div class="progress-area"><input id="seek" type="range" min="0" max="100" value="0"><div class="time-row"><span id="current-time">0:00</span><span id="total-time">0:00</span></div></div>
+      <div class="play-controls"><button id="shuffle" title="عشوائي">⤨</button><button id="previous" title="السابق">◀|</button><button id="play" class="play-button" title="تشغيل">▶</button><button id="next" title="التالي">|▶</button><button id="repeat" title="تكرار">↻</button></div>
+      <div class="volume-row"><span>◖</span><input id="volume" type="range" min="0" max="1" step="0.01" value="0.8"><span>◗</span></div>
+      <div class="player-divider"></div><div class="queue-heading"><strong>التالي في القائمة</strong><button id="clear-queue">مسح</button></div><div class="queue-list" id="queue-list"><div class="queue-empty">أضف ملفات لتظهر هنا</div></div>
+      <audio id="audio-player" preload="metadata"></audio><video id="video-player" playsinline></video>
+    </aside>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>
