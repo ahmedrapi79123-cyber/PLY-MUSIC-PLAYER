@@ -14,7 +14,6 @@
 </p>
 
 <p align="center">
-  <img src="Screenshot_2026-08-14_19-12-22.png" width="45%" alt="PLY screenshot 3">
   <img src="Screenshot_2026-08-14_19-13-33.png" width="45%" alt="PLY screenshot 4">
 </p>
 
