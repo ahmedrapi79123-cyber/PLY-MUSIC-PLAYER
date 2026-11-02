@@ -1,0 +1,40 @@
+# Maintainer: Ashraf
+pkgname=ply-player
+pkgver=1.1.0
+_commit=a5eb45302340b9657b12aaead03dd614ad11a761
+pkgrel=2
+pkgdesc="Modern Python music player with CLI and Tkinter GUI"
+arch=('any')
+url="https://github.com/ahmedrapi79123-cyber/PLY-MUSIC-PLAYER"
+license=('MIT')
+depends=(
+  'python'
+  'python-gobject'
+  'python-dbus'
+  'python-mutagen'
+  'python-rich'
+  'python-pillow'
+  'python-pystray'
+  'tk'
+  'gstreamer'
+  'gst-plugins-base'
+  'gst-plugins-good'
+  'gst-plugins-bad'
+  'gst-plugins-ugly'
+)
+makedepends=('git' 'python-setuptools')
+source=("$pkgname::git+$url.git#commit=$_commit")
+# VCS sources use SKIP; the commit above pins the source tree immutably.
+sha256sums=('SKIP')
+
+build() {
+  cd "$srcdir/$pkgname"
+  python setup.py build
+}
+
+package() {
+  cd "$srcdir/$pkgname"
+  python setup.py install --root="$pkgdir" --optimize=1 --skip-build
+
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

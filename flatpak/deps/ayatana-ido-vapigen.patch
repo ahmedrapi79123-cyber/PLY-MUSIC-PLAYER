@@ -1,0 +1,11 @@
+--- src/CMakeLists.txt
++++ src/CMakeLists.txt
+@@ -168,6 +168,7 @@
+         add_custom_command(
+             OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/libayatana-ido3-0.4.vapi"
+             DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/AyatanaIdo3-0.4.typelib"
+             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
++            COMMAND ${CMAKE_COMMAND} -E env sh -c "sed -i '/<doc:format name=\"unknown\"\\/>/d' AyatanaIdo3-0.4.gir"
+             COMMAND
+             ${VAPI_GEN}
+             --library=libayatana-ido3-0.4
