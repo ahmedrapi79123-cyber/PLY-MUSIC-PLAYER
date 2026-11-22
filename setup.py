@@ -7,14 +7,14 @@ from setuptools import setup
 
 setup(
     name="ply-player",
-    version="1.1.0",
+    version="3.1.2",
     description="A professional, modern command-line and graphical music player.",
     author="Ahmed",
     author_email="developer@ply.org",
     url="https://github.com/ahmedrapi79123-cyber/PLY-MUSIC-PLAYER",
     license="MIT",
     py_modules=[
-        "main", "cli", "gui", "player", "playlist",
+        "main", "cli", "gui", "gui_ctk", "player", "playlist",
         "library", "settings", "config", "themes", "icons", "utils", "mpris",
     ],
     # NOTE: install_requires is intentionally empty here.
@@ -27,6 +27,7 @@ setup(
             "mutagen>=1.46.0",
             "rich>=13.0.0",
             "pillow>=10.0.0",
+            "customtkinter>=5.2.2,<6.0.0",
         ],
         "tray": ["pystray>=0.19.5"],
     },
