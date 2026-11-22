@@ -14,7 +14,7 @@ from library import Library, Song
 from playlist import Playlist
 from player import Player
 from cli import CLI
-from gui import GUI
+from gui_ctk import GUI
 
 # ---------------------------------------------------------------------------
 # Single-instance lock

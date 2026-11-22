@@ -3,7 +3,7 @@
 set -e
 
 APP_NAME="ply-player"
-VERSION="1.1.0"
+VERSION="3.1.2"
 ARCH="all"
 DEB_FILE="${APP_NAME}_${VERSION}_${ARCH}.deb"
 BUILD_DIR="ply_deb_build"
@@ -27,12 +27,13 @@ mkdir -p "${BUILD_DIR}/usr/share/ply/assets"
 # 3. DEBIAN/control — no pystray (not in apt), uses system libayatana or pystray optionally
 cat > "${BUILD_DIR}/DEBIAN/control" << 'EOF'
 Package: ply-player
-Version: 1.1.0
+Version: 3.1.2
 Section: sound
 Priority: optional
 Architecture: all
 Depends: python3 (>= 3.10),
  python3-tk,
+ python3-packaging,
  python3-gi,
  python3-gst-1.0,
  gstreamer1.0-plugins-base,
@@ -46,7 +47,7 @@ Depends: python3 (>= 3.10),
 Recommends: gstreamer1.0-libav
 Maintainer: Ahmed <developer@ply.org>
 Description: PLY - A modern command-line and graphical music player
- PLY is a lightweight music player powered by GStreamer with a Tkinter GUI,
+ PLY is a lightweight music player powered by GStreamer with a CustomTkinter GUI,
  Rich terminal TUI, MPRIS2 desktop integration, and system tray support.
  .
  Features: playback of MP3/OGG/FLAC/WAV/Opus/M4A, playlist management,
@@ -87,15 +88,27 @@ if [ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ]; then
     export DISPLAY=:0
 fi
 
+export PYTHONPATH="/usr/share/ply/vendor${PYTHONPATH:+:$PYTHONPATH}"
 exec python3 /usr/share/ply/main.py "$@"
 EOF
 
 # 6. Copy Python source files
 echo "Copying source files..."
-cp main.py cli.py gui.py player.py playlist.py \
+cp main.py cli.py gui.py gui_ctk.py player.py playlist.py \
    library.py settings.py config.py themes.py \
    icons.py utils.py mpris.py \
    "${BUILD_DIR}/usr/share/ply/"
+
+# Bundle CustomTkinter and darkdetect for the new GUI.
+VENDOR_DIR="${BUILD_DIR}/usr/share/ply/vendor"
+python3 -m pip install \
+    --disable-pip-version-check \
+    --no-warn-script-location \
+    --no-compile \
+    --no-deps \
+    --target "$VENDOR_DIR" \
+    "customtkinter==5.2.2" \
+    "darkdetect==0.8.0"
 
 # Copy optional files if they exist
 for f in requirements.txt LICENSE README.md; do

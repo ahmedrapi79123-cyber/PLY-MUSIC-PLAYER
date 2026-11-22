@@ -1,199 +1,220 @@
-# PLY Music Player 🎧
+# PLY Pro 3.1.2 🎧
 
-**PLY** is a professional, modern, and lightweight music player written in **Python**. It features a unified playback engine powered by **GStreamer** with two beautiful modes of operation:
-1. **Interactive Terminal User Interface (CLI)** using `Rich` for gorgeous dashboards.
-2. **Graphical User Interface (GUI)** using `Tkinter` and `Pillow` for a sleek dark/light mode experience.
+**PLY Pro** is a modern and lightweight music player for Linux, written in Python. It combines a GStreamer-powered playback engine with two interfaces:
 
----
-
-## Screenshots
-
-<p align="center">
-  <img src="Screenshot_2026-08-14_19-11-19.png" width="45%" alt="PLY screenshot 1">
-  <img src="Screenshot_2026-08-14_19-12-04.png" width="45%" alt="PLY screenshot 2">
-</p>
-
-<p align="center">
-  <img src="Screenshot_2026-08-14_19-13-33.png" width="45%" alt="PLY screenshot 4">
-</p>
+- **Graphical Interface (GUI):** Built with CustomTkinter.
+- **Terminal Interface (CLI):** Interactive terminal interface powered by Rich.
 
 ## Features
 
-* **Bimodal Interface**: Run in the terminal (CLI) or as a desktop application (GUI).
-* **GStreamer Audio Engine**: Uses the same playback engine as Rhythmbox and GNOME Music for reliable, high-quality audio.
-* **MPRIS2 Integration**: Control playback from your desktop panel, PulseAudio plugin, or any MPRIS-compatible controller.
-* **Background Playback**: Close the GUI window and music keeps playing. A system tray icon provides quick controls.
-* **Modern Design**: Vibrant purple accents, glassmorphic layout principles, and dynamic dark/light theme switching.
-* **Auto-Discovery**: Automatically scan folders, identify supported audio files, and import metadata (Title, Artist, Album, Year, Duration, Cover Art).
-* **Rich Formats**: Native support for `MP3`, `WAV`, and `OGG` (more formats supported if GStreamer plugins are available).
-* **Playlists**: Import and export standard `M3U` and `M3U8` playlists.
-* **Preferences & History**: Persistent volume, last directories, settings, and play history.
-* **Non-Blocking Architecture**: Fully multi-threaded scanner and play engine so interfaces never freeze.
+- **Modern GUI:** CustomTkinter interface with dark and light themes.
+- **GStreamer Audio Engine:** Reliable audio playback with support for formats provided by installed GStreamer plugins.
+- **Terminal Interface:** Control music playback through the Rich-based CLI.
+- **MPRIS2 Integration:** Desktop media controls and media-key support.
+- **System Tray:** Background playback with tray controls.
+- **Music Library:** Scan folders and read track metadata.
+- **Album Artwork:** Display embedded cover art.
+- **Playlists:** Import and export M3U and M3U8 playlists.
+- **Playback Controls:** Play, pause, stop, next, previous, shuffle, repeat, and volume.
+- **Persistent Settings:** Save preferences and playback history.
 
 ---
+
+## Requirements
+
+- Linux
+- Python 3.10 or newer
+- GStreamer 1.0
+- GTK and GObject introspection bindings
+- Tkinter
+- GStreamer base, good, and ugly plugins
 
 ## Installation
 
-### Prerequisites
-* Python 3.10 or newer.
-* GStreamer 1.0 with base/good plugins.
-* System audio drivers installed (PulseAudio/PipeWire on Linux).
+### Ubuntu / Debian
 
-### Ubuntu/Debian
+Install the system dependencies:
 
-Install the required system packages:
 ```bash
 sudo apt-get update
-sudo apt-get install python3-tk python3-gi python3-gst-1.0 \
-    gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
-    gstreamer1.0-plugins-ugly python3-dbus -y
+
+sudo apt-get install \
+    python3 python3-pip python3-venv \
+    python3-tk python3-gi python3-gst-1.0 python3-dbus \
+    gstreamer1.0-plugins-base \
+    gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-ugly
 ```
 
 ### Install from source
-Clone the repository and install:
+
+Clone the repository:
+
 ```bash
+git clone https://github.com/ahmedrapi79123-cyber/PLY-MUSIC-PLAYER.git
+cd PLY-MUSIC-PLAYER
+```
+
+Create and activate a virtual environment:
+
+```bash
+python3 -m venv --system-site-packages .venv
+source .venv/bin/activate
+```
+
+Install Python dependencies and PLY Pro:
+
+```bash
+pip install -r requirements.txt
 pip install .
 ```
-This registers the `ply` command in your PATH.
 
-### Install from .deb package
+Launch the graphical interface:
+
 ```bash
-sudo apt install ./ply-player_1.1.0_all.deb
+ply --gui
 ```
 
-### Install from Flatpak
+### Install from a Debian package
+
 ```bash
-flatpak install flathub io.github.ahmed.ply
-flatpak run io.github.ahmed.ply
+sudo apt install ./ply-player_3.1.2_all.deb
 ```
 
 ---
 
-## Command Line Usage
+## Usage
+
+### Graphical Interface
+
+Launch the PLY Pro GUI:
 
 ```bash
-# Launch the Graphical User Interface (GUI)
 ply --gui
+```
 
-# Play a specific audio file in the terminal CLI
+### Terminal Interface
+
+Play a specific audio file:
+
+```bash
 ply song.mp3
+```
 
-# Play all supported files in a directory
+Play music from a directory:
+
+```bash
 ply ~/Music
+```
 
-# Play with shuffle enabled
+Enable shuffle:
+
+```bash
 ply ~/Music --shuffle
+```
 
-# Play with repeat enabled
+Enable repeat:
+
+```bash
 ply ~/Music --repeat
+```
 
-# Set initial volume to 75%
+Set the initial volume to 75%:
+
+```bash
 ply ~/Music --volume 75
+```
 
-# Display help
+Display help:
+
+```bash
 ply --help
 ```
 
 ---
 
-## Keyboard Shortcuts (CLI)
+## CLI Keyboard Shortcuts
 
-| Key     | Action                          |
-|---------|---------------------------------|
-| `Space` | Play / Pause                    |
-| `N`     | Next Track                      |
-| `B`     | Previous Track                  |
-| `S`     | Stop Playback                   |
-| `+`/`-` | Volume Up / Down                |
-| `H`     | Toggle Shuffle                  |
-| `R`     | Cycle Repeat (Off → All → One)  |
-| `Q`     | Quit                            |
-
----
-
-## Graphical User Interface (GUI)
-
-The GUI offers a complete media dashboard containing:
-* **Interactive Playlist Sidebar**: Shows all loaded tracks. Double-click to play any track.
-* **Live Search**: Instantly filter tracks in the active list.
-* **Theme Switcher**: Toggle between Dark Mode and Light Mode.
-* **Music Cover Art**: Displays embedded cover images or fallback vinyl art.
-* **Drag-to-Seek**: Fluid slider displaying current elapsed time vs. track duration.
-* **Control Dock**: Shuffle, Repeat, Prev, Play, Pause, Stop, Next, and Volume slider.
-* **Importing**: Load files, scan folders, or import/export M3U playlists.
-* **System Tray**: Close the window to minimize to tray with playback controls.
+| Key | Action |
+|---|---|
+| `Space` | Play / Pause |
+| `N` | Next Track |
+| `B` | Previous Track |
+| `S` | Stop Playback |
+| `+` / `-` | Volume Up / Down |
+| `H` | Toggle Shuffle |
+| `R` | Cycle Repeat |
+| `Q` | Quit |
 
 ---
 
-## MPRIS2 Support
+## MPRIS2 Integration
 
-PLY registers as `org.mpris.MediaPlayer2.ply` on the D-Bus session bus, providing standard media player controls to desktop environments. This means:
-* PulseAudio panel plugin shows PLY with play/pause/next/previous controls.
-* Desktop media keys work automatically.
-* Any MPRIS2-compatible controller can manage PLY.
+PLY Pro registers as an MPRIS2 media player on the D-Bus session bus.
+
+This allows compatible desktop environments and media controllers to:
+
+- Control playback.
+- Skip to the next or previous track.
+- Pause and resume music.
+- Use desktop media keys.
 
 ---
 
-## Data & Configuration
+## Data and Configuration
 
-PLY stores its data in `~/.ply/`:
+PLY stores its user data in:
 
 ```text
 ~/.ply/
-├── data/
-│   ├── settings.json   # User preferences
-│   ├── history.json    # Play history
-│   └── temp/           # Cached cover art
-├── logs/
-│   └── ply.log         # Application log
-└── assets/             # Generated icons
 ```
+
+This directory contains application settings, playback history, logs, and cached artwork.
 
 ---
 
-## Directory Structure
+## Project Structure
 
 ```text
-ply/
-├── main.py            # Entry point and CLI router
-├── cli.py             # Rich Terminal TUI
-├── gui.py             # Tkinter GUI
-├── player.py          # GStreamer playbin audio engine
-├── playlist.py        # M3U/M3U8 playlist manager
-├── library.py         # Song models, folder scanner, play history
-├── settings.py        # JSON settings manager
-├── config.py          # Logger, paths, configuration
-├── themes.py          # Color schemes (Dark/Light)
-├── icons.py           # Programmatic PNG assets generator
-├── utils.py           # Metadata reader and caching helpers
-├── mpris.py           # MPRIS2 D-Bus media controller
-├── requirements.txt   # Python dependencies
-├── setup.py           # Package installer
-├── build_deb.sh       # Debian package builder
-├── flatpak/           # Flatpak packaging files
-└── LICENSE            # MIT License
+PLY-MUSIC-PLAYER/
+├── main.py              # Application entry point
+├── gui_ctk.py           # CustomTkinter graphical interface
+├── gui.py               # Shared GUI and playback logic
+├── cli.py               # Rich terminal interface
+├── player.py            # GStreamer playback engine
+├── playlist.py          # Playlist management
+├── library.py           # Music library and metadata
+├── settings.py          # User settings
+├── config.py            # Application configuration
+├── themes.py             # Theme configuration
+├── icons.py              # Icon utilities
+├── utils.py              # Utility functions
+├── mpris.py              # MPRIS2 integration
+├── assets/               # Application images and icons
+├── requirements.txt      # Python dependencies
+├── setup.py              # Package configuration
+├── build_deb.sh          # Debian package builder
+└── LICENSE               # MIT License
 ```
 
 ---
 
 ## Development
 
-### Running from source
+Run PLY Pro from the source directory:
+
 ```bash
 python3 main.py --gui
 ```
 
-### Building the .deb package
+Build a Debian package:
+
 ```bash
 ./build_deb.sh
-```
-
-### Building the Flatpak
-```bash
-flatpak-builder --user --install --force-clean build-flatpak flatpak/io.github.ahmed.ply.yml
 ```
 
 ---
 
 ## License
-This project is licensed under the **MIT License**. See the `LICENSE` file for more details.
+
+PLY Pro is licensed under the MIT License. See the `LICENSE` file for details.
